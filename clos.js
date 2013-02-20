@@ -46,29 +46,29 @@ module.exports = (function () {
 
     /* -- /Method -- */
 
-    /* classes are plain constructor function  */
-    CLOS.defClass = function (name, supr) {
-        var cl = function () {};
-        supr = supr || function () {};
-        cl.prototype = new supr;
-        cl.prototype.toString = function () { return name;  };
-        cl.prototype.isA = function (standard) { return CLOS.isA(this, standard);  };
+    /* classes are constructor functions  */
+    /* The constructor may take a predicate function that ensures its instances
+     * to have specific properties */
+    CLOS.defClass = function (pred, name) {
+        pred = pred || function () {return true;};
+        var cl = function (obj) {
+            var key;
+            if ( ! pred(obj)) throw "Initialization error";
+            for (key in obj)
+                if (obj.hasOwnProperty(key))
+                    this[key] = obj[key];
+        };
+        cl.prototype.toString = function () { return name || 'aCLOSClass';  };
+        cl.prototype.isA = function (standard) { return CLOS.isA(this, standard); };
         return cl;
     };
 
     //procedures
 
     CLOS.isA = function(example, standard){
-        if(standard === undefined){
-            return true;
-        }
-        if(example instanceof standard){
-            return true;
-        }
-        if(typeof(example) == standard){
-            return true;
-        }
-        return false;
+        return (standard === undefined)
+            || (typeof(example) == standard)
+            || (example instanceof standard);
     };
 
     /* (define-generic)  */
@@ -92,6 +92,20 @@ module.exports = (function () {
             }
         }
         throw 'CLOS error: cannot find specified method for ' + parameters;
+    };
+
+    //for schemer
+    CLOS.define_method = CLOS.defMethod;
+    CLOS.define_generic = CLOS.defGeneric;
+    CLOS.define_class = CLOS.define_class;
+
+    CLOS.slot_exists = function (obj, slot, cls) {
+        return (obj[slot] !== undefined) && CLOS.isA(obj[slot], cls);
+    };
+
+    //alias to `new`
+    CLOS.make = function (cls, obj) {
+        return new cls(obj);
     };
 
     return CLOS;
