@@ -4,70 +4,167 @@
  * LLGPL -> http://opensource.franz.com/preamble.html
  */
 
-var CLOS = {};
-CLOS.generics = {};
+if ( ! Array.prototype.forEach)
+    Array.prototype.forEach = function (f) {
+        var i = 0, l = this.length;
+        for (; i < l; ++i)
+            f(this[i], i);
+    };
 
-CLOS.generic = function(name){
-	this.name = name;
-	this.methods = [];
-};
-CLOS.method = function(clause, body){
-	this.clause = clause;
-	this.body = body;
-};
-CLOS.isA = function(example, standard){
-	if(standard === undefined){
-		return true;
-	}
-	if(example === standard){
-		return true;
-	}
-	if(typeof(example) == standard){
-		return true;
-	}
-	return false;
-}
-CLOS.method.prototype.check = function(parameters){
-	var i;
-	for(i in this.clause){
-		if(CLOS.isA(parameters[i], this.clause[i])){
-			continue;
-		}
-		return false;
-	}
-	return true;
-};
 
-CLOS.defGeneric = function(name){
-	CLOS.generics[name] = new CLOS.generic(name);
-};
-CLOS.getGeneric = function(name){
-	if(!CLOS.generics[name]){
-		throw 'CLOS error: generic ' + name + ' is not defined';
-	}
-	return CLOS.generics[name];
-};
+module.exports = (function () {
+    var CLOS = {}; //exported namespace
 
-CLOS.defMethod = function(name, parameters, body){
-	var generic = CLOS.getGeneric(name);
-	generic.methods[generic.methods.length] = new CLOS.method(parameters, body);
-};
+    var _slice = Array.prototype.slice;
 
-CLOS.call = function(name){
-	var generic = CLOS.getGeneric(name),
-		parameters = Array.prototype.slice.call(arguments, 1),
-		method, i;
-	for(i in generic.methods){
-		method = generic.methods[i];
-		if(method.check(parameters)){
-			return method.body.apply(parameters);
-		}
-	}
-	throw 'CLOS error: cannot find method ' + name + ' for ' + parameters;
-};
+    CLOS.options = {};
+    CLOS.options.dispatchBasedOnSpecificity = true;
 
-/*CLOS.init = function(object){
-	object.clos = {};
-	object.clos.prototype = CLOS;
-	object.clos.object = object;
-};*/
+    //JS class
+
+    /* constructor for generic-function object */
+    function Generic () {
+
+        var self = function () {
+            return _call.call(self, _slice.call(arguments));
+        };
+
+        self.defMethod = function (parameters, body) {
+            self.methods.push(new Method(parameters, body));
+            if (CLOS.options.dispatchBasedOnSpecificity)
+                self.methods.sort(specificity);
+        };
+
+        self.methods = [];
+        return self;             //this is valid
+    };
+
+    //sort function
+    function specificity (a, b) {
+        var aWin = 0, bWin = 0, i = 0, l = a.clause.length;
+        for (; i < l; ++i) {
+            if (CLOS.isA(a.clause[i], b.clause[i])) ++bWin;
+            if (CLOS.isA(b.clause[i], a.clause[i])) ++aWin;
+        }
+        return aWin - bWin;
+    };
+
+    /* constructor for actual method generic functions delegates to */
+    function Method (clause, body){
+        this.clause = clause;
+        this.body = body;
+    };
+
+    Method.prototype.check = function(parameters){
+        var i, self = this;
+        for(i in this.clause){
+            if (CLOS.isA(parameters[i], this.clause[i]))
+                continue;
+            return false;
+        }
+        return true;
+    };
+
+    /* -- /Method -- */
+
+    /* classes are constructor functions  */
+    /* The constructor may take a predicate function that ensures its instances
+     * to have specific properties */
+    CLOS.defClass = function (parents, pred, name) {
+        pred = pred || function () {return true;};
+        var cl = function (obj) {
+            var key;
+            parents.forEach(function (p) { return p._pred(obj); }); //check for exception
+            if ( ! pred(obj)) throw "Initialization error";
+            for (key in obj)
+                if (obj.hasOwnProperty(key))
+                    this[key] = obj[key];
+        };
+        var flatParents = parents.reduce(function (acc, cur) {
+            return acc.concat(cur._parents);  }, parents);
+        cl._pred = pred;
+        cl.prototype.constructor = cl;
+        cl._parents = flatParents;
+        cl.prototype._parents = flatParents;
+        cl.prototype.toString = function () { return name || JSON.stringify(this);  };
+        cl.prototype.isA = function (standard) { return CLOS.isA(this, standard); };
+        return cl;
+    };
+
+    //procedures
+
+    //more like a pattern-matching
+    /**
+     * passes when:
+     * example === standard
+     * standard === undefined
+     * typeof(example) == standard
+     * example instanceof standard
+     * member(example._parent, standard)
+     */
+    CLOS.isA = function (example, standard) {
+        if (example === standard) return true;
+        if (! example) return false;
+        switch(typeof(standard)) {
+            case "undefined":
+              return true;
+            case "string":
+              return (typeof(example) == standard);
+            case "function":
+            case "object":
+              return (example instanceof standard)
+                  || hasParent(example._parents, standard);
+            default:
+              return false;
+        }
+    };
+
+    function hasParent (parents, standard) {
+        if ( ! parents) return false;
+        return parents.indexOf(standard) > -1;
+    };
+
+
+    /* (define-generic)  */
+    CLOS.defGeneric = function () {
+        return new Generic();
+    };
+
+    //alias
+    //this function is expensive
+    CLOS.defMethod = function (generic, params, body) {
+        generic.defMethod(params, body);
+    };
+
+    var _call = function (parameters) {
+        var method, i;
+        //iterate over methods defined on the generic
+        for(i in this.methods){
+            method = this.methods[i];
+            //checks if the given parameter matches the declared type
+            if(method.check(parameters)){
+                return method.body.apply({}, parameters);
+            }
+        }
+        throw 'CLOS error: cannot find specified method for ' + parameters;
+    };
+
+    //for schemer
+    CLOS.define_method = CLOS.defMethod;
+    CLOS.define_generic = CLOS.defGeneric;
+    CLOS.define_class = CLOS.defClass;
+    CLOS.is_a = CLOS.isA;
+
+    CLOS.slot_exists = function (obj, slot, cls) {
+        return (obj[slot] !== undefined)
+            && cls ? CLOS.isA(obj[slot], cls) : true;
+    };
+
+    //alias to `new`
+    CLOS.make = function (cls, obj) {
+        return new cls(obj);
+    };
+
+    return CLOS;
+
+}());
