@@ -1,6 +1,6 @@
-var clos = exports.clos = require('./../clos');
+var clos = exports.clos = require('./../clos'),
 
-var hard = exports.hard = new clos.symbol('hard'),
+	hard = exports.hard = new clos.symbol('hard'),
 	soft = exports.soft = new clos.symbol('soft'),
 	brittle = exports.brittle = new clos.symbol('brittle'),
 	elastic = exports.elastic = new clos.symbol('elastic'),
