@@ -1,4 +1,10 @@
 JS-CLOS
 =======
 
-A CLOS-like framework sketch on JavaScript.
+Common Lisp Object System on Javascript.
+
+Run test:
+
+	```
+	npm test
+	```

@@ -1,0 +1,16 @@
+{
+  "name": "clos",
+  "description": "Common Lisp Object System",
+  "version": "0.0.2",
+  "scripts": {
+    "test": "clear && node test/index.js"
+  },
+  "engines": {
+    "node": "*",
+    "npm": "*"
+  },
+  "dependencies": {
+    "underscore": "*",
+    "qunit": "*"
+  }
+}

@@ -1,73 +1,162 @@
-/* JavaScript "CLOS", v.0.1 (alpha)
- * (c) Дмитрий Пинский <demetrius@neverblued.info>
- * Допускаю использование и распространение согласно
- * LLGPL -> http://opensource.franz.com/preamble.html
- */
+var _ = require('underscore');
+var clos = exports = module.exports = {};
 
-var CLOS = {};
-CLOS.generics = {};
+// tool
 
-CLOS.generic = function(name){
-	this.name = name;
-	this.methods = [];
+var inherit = function(example, origin){
+	example.prototype = Object.create(origin.prototype, {
+		constructor: {value: example}
+	});
 };
-CLOS.method = function(clause, body){
-	this.clause = clause;
-	this.body = body;
+
+// error
+
+clos.error = function(){};
+
+inherit(clos.error, Error);
+
+clos.error.prototype.toString = function(){
+	return 'CLOS error: ' + this.message + '!';
 };
-CLOS.isA = function(example, standard){
+
+//clos.typeError = function(datum, expected){
+//	this.message = 'expected ' + expected + ', but found ' + datum;
+//};
+//
+//inherit(clos.typeError, clos.error);
+
+clos.noMethod = function(generic, parameters){
+	this.message = 'no ' + generic + ' for ' + _.invoke(parameters, 'toString').join(', ');
+};
+
+inherit(clos.noMethod, clos.error);
+
+// identity
+
+clos.isA = function(example, standard){
 	if(standard === undefined){
 		return true;
 	}
 	if(example === standard){
 		return true;
 	}
-	if(typeof(example) == standard){
+	if(clos.isInstance(example, standard)){
 		return true;
 	}
 	return false;
-}
-CLOS.method.prototype.check = function(parameters){
-	var i;
-	for(i in this.clause){
-		if(CLOS.isA(parameters[i], this.clause[i])){
-			continue;
+};
+
+clos.isInstance = function(example, standard){
+	if(typeof example === standard){
+		return true;
+	}
+	if(example.classes && _.isArray(example.classes)){
+		if(_.any(example.classes, function(parent){
+			return clos.isA(parent, standard);
+		})){
+			return true;
 		}
-		return false;
 	}
-	return true;
+	return false;
 };
 
-CLOS.defGeneric = function(name){
-	CLOS.generics[name] = new CLOS.generic(name);
-};
-CLOS.getGeneric = function(name){
-	if(!CLOS.generics[name]){
-		throw 'CLOS error: generic ' + name + ' is not defined';
+// symbol
+
+clos.symbols = {};
+
+clos.symbol = function(name, classes){
+	var symbol = clos.symbols[name];
+	if(symbol){
+		return symbol;
+	}else{
+		symbol = this;
 	}
-	return CLOS.generics[name];
+	symbol.name = name;
+	symbol.classes = classes || [];
+	clos.symbols[name] = symbol;
 };
 
-CLOS.defMethod = function(name, parameters, body){
-	var generic = CLOS.getGeneric(name);
-	generic.methods[generic.methods.length] = new CLOS.method(parameters, body);
+clos.symbol.prototype.toString = function(){
+	return '#' + this.name;
 };
 
-CLOS.call = function(name){
-	var generic = CLOS.getGeneric(name),
-		parameters = Array.prototype.slice.call(arguments, 1),
-		method, i;
-	for(i in generic.methods){
-		method = generic.methods[i];
+// generic
+
+clos.generics = {};
+
+clos.generic = function(name){
+	var generic = clos.generics[name];
+	if(generic){
+		return generic;
+	}else{
+		generic = this;
+	}
+	generic.name = name;
+	generic.methods = [];
+	clos.generics[name] = generic;
+};
+
+clos.generic.prototype.toString = function(){
+	return '@' + this.name;
+};
+
+clos.generic.prototype.call = function(){
+	var generic = this,
+		parameters = arguments,
+		methods = generic.find.apply(generic, parameters);
+	if(!methods.length){
+		throw new clos.noMethod(generic, parameters);
+	}
+	return _.map(methods, function(method){
+		return method.call.apply(method, parameters);
+	});
+};
+
+clos.generic.prototype.find = function(){
+	var generic = this,
+		parameters = arguments,
+		methods = [];
+	_.each(generic.methods, function(method){
 		if(method.check(parameters)){
-			return method.body.apply(parameters);
+			methods.push(method);
 		}
-	}
-	throw 'CLOS error: cannot find method ' + name + ' for ' + parameters;
+	});
+	methods = methods.sort(generic.order);
+	return methods;
 };
 
-/*CLOS.init = function(object){
-	object.clos = {};
-	object.clos.prototype = CLOS;
-	object.clos.object = object;
-};*/
+// method
+
+clos.method = function(generic, clause, body){
+	this.clause = clause;
+	this.body = body;
+	generic.methods.push(this);
+};
+
+clos.method.prototype.check = function(parameters){
+	var clause = this.clause;
+	if(!_.isArray(clause)){
+		clause = [clause];
+	}
+	var index = -1;
+	return _.every(clause, function(clause){
+		index++;
+		return clos.isA(parameters[index], clause);
+	});
+};
+
+clos.generic.prototype.order = function(method1, method2){
+	var value1 = method1.clause.length,
+		value2 = method2.clause.length;
+	if(value1 === value2){
+		return 0;
+	}else if(value1 > value2){
+		return -1;
+	}else{
+		return 1;
+	}
+};
+
+clos.method.prototype.call = function(){
+	return this.body.apply(undefined, arguments);
+};
