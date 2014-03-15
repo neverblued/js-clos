@@ -146,15 +146,7 @@ clos.method.prototype.check = function(parameters){
 };
 
 clos.generic.prototype.order = function(method1, method2){
-	var value1 = method1.clause.length,
-		value2 = method2.clause.length;
-	if(value1 === value2){
-		return 0;
-	}else if(value1 > value2){
-		return -1;
-	}else{
-		return 1;
-	}
+	return method1.clause.length - method2.clause.length;
 };
 
 clos.method.prototype.call = function(){
