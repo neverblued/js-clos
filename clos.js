@@ -50,8 +50,8 @@ clos.isInstance = function(example, standard){
 	if(typeof example === standard){
 		return true;
 	}
-	if(example.classes && _.isArray(example.classes)){
-		if(_.any(example.classes, function(parent){
+	if(example.origin && _.isArray(example.origin)){
+		if(_.any(example.origin, function(parent){
 			return clos.isA(parent, standard);
 		})){
 			return true;
@@ -64,7 +64,7 @@ clos.isInstance = function(example, standard){
 
 clos.symbols = {};
 
-clos.symbol = function(name, classes){
+clos.symbol = function(name, origin){
 	var symbol = clos.symbols[name];
 	if(symbol){
 		return symbol;
@@ -72,7 +72,7 @@ clos.symbol = function(name, classes){
 		symbol = this;
 	}
 	symbol.name = name;
-	symbol.classes = classes || [];
+	symbol.origin = origin || [];
 	clos.symbols[name] = symbol;
 };
 
