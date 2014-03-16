@@ -33,11 +33,11 @@ inherit(clos.noMethod, clos.error);
 
 // identity
 
-clos.isA = function(example, standard){
-	if(standard === undefined){
+clos.is = function(example, standard){
+	if(_.isUndefined(standard)){
 		return true;
 	}
-	if(example === standard){
+	if(_.isEqual(example, standard)){
 		return true;
 	}
 	if(clos.isInstance(example, standard)){
@@ -47,17 +47,19 @@ clos.isA = function(example, standard){
 };
 
 clos.isInstance = function(example, standard){
-	if(typeof example === standard){
+	if(_.isEqual(typeof example, standard)){
 		return true;
 	}
-	if(example.origin && _.isArray(example.origin)){
-		if(_.any(example.origin, function(parent){
-			return clos.isA(parent, standard);
-		})){
-			return true;
-		}
+	if(_.isEqual(example.prototype, standard)){
+		return true;
 	}
-	return false;
+	var origin = example.origin;
+	if(!(origin && _.isArray(origin))){
+		return false;
+	}
+	return !! _.any(origin, function(parent){
+		return clos.is(parent, standard);
+	});
 };
 
 // symbol
@@ -141,7 +143,7 @@ clos.method.prototype.check = function(parameters){
 	var index = -1;
 	return _.every(clause, function(clause){
 		index++;
-		return clos.isA(parameters[index], clause);
+		return clos.is(parameters[index], clause);
 	});
 };
 
