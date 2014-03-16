@@ -13,7 +13,9 @@ var clos = exports.clos = require('./../clos'),
 	glass = exports.glass = new clos.symbol('glass', [brittle]),
 	tea = exports.tea = new clos.symbol('tea', [liquid]),
 	
-	bump = exports.bump = new clos.generic('bump');
+	bump = new clos.generic('bump');
+	
+exports.bump = bump.lambda();
 
 new clos.method(bump, [undefined, soft], function(x, y){
 	return 'silence';

@@ -65,15 +65,9 @@ clos.isInstance = function(example, standard){
 clos.symbols = {};
 
 clos.symbol = function(name, origin){
-	var symbol = clos.symbols[name];
-	if(symbol){
-		return symbol;
-	}else{
-		symbol = this;
-	}
-	symbol.name = name;
-	symbol.origin = origin || [];
-	clos.symbols[name] = symbol;
+	this.name = name;
+	this.origin = origin || [];
+	clos.symbols[name] = this;
 };
 
 clos.symbol.prototype.toString = function(){
@@ -85,19 +79,25 @@ clos.symbol.prototype.toString = function(){
 clos.generics = {};
 
 clos.generic = function(name){
-	var generic = clos.generics[name];
-	if(generic){
-		return generic;
-	}else{
-		generic = this;
-	}
-	generic.name = name;
-	generic.methods = [];
-	clos.generics[name] = generic;
+	this.name = name;
+	this.methods = [];
+	clos.generics[name] = this;
 };
 
 clos.generic.prototype.toString = function(){
 	return '@' + this.name;
+};
+
+clos.generic.prototype.lambda = function(){
+	var generic = this;
+	var lambda = function(){
+		return generic.call.apply(generic, arguments);
+	};
+	lambda.generic = generic;
+	lambda.toString = function(){
+		return generic.toString();
+	};
+	return lambda;
 };
 
 clos.generic.prototype.call = function(){
