@@ -8,7 +8,7 @@ var clos = exports.clos = require('./../clos'),
 	
 	floor = exports.floor = new clos.symbol('floor', [hard]),
 	stick = exports.stick = new clos.symbol('stick', [hard]),
-	plaid = exports.plaid = new clos.symbol('plaid', [soft]),
+	blanket = exports.blanket = new clos.symbol('blanket', [soft]),
 	ball = exports.ball = new clos.symbol('ball', [elastic]),
 	glass = exports.glass = new clos.symbol('glass', [brittle]),
 	tea = exports.tea = new clos.symbol('tea', [liquid]),

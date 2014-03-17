@@ -15,10 +15,6 @@ clos.error = function(){};
 
 inherit(clos.error, Error);
 
-clos.error.prototype.toString = function(){
-	return 'CLOS error: ' + this.message + '!';
-};
-
 //clos.typeError = function(datum, expected){
 //	this.message = 'expected ' + expected + ', but found ' + datum;
 //};
@@ -40,26 +36,42 @@ clos.is = function(example, standard){
 	if(_.isEqual(example, standard)){
 		return true;
 	}
+	if(standard.validate && standard.validate(example)){
+		return true;
+	}
 	if(clos.isInstance(example, standard)){
 		return true;
 	}
 	return false;
 };
 
+clos.type = function(name, validate){
+	this.name = name;
+	this.validate = validate;
+	clos[name] = clos.types[name] = this;
+};
+
+clos.types = {};
+new clos.type('boolean', _.isBoolean);
+new clos.type('number', _.isNumber);
+new clos.type('string', _.isString);
+new clos.type('array', _.isArray);
+
 clos.isInstance = function(example, standard){
-	if(_.isEqual(typeof example, standard)){
-		return true;
-	}
 	if(_.isEqual(example.prototype, standard)){
 		return true;
 	}
 	var origin = example.origin;
-	if(!(origin && _.isArray(origin))){
+	if(!origin){
 		return false;
 	}
-	return !! _.any(origin, function(parent){
-		return clos.is(parent, standard);
-	});
+	if(_.isArray(origin)){
+		return _.any(origin, function(parent){
+			return clos.is(parent, standard);
+		});
+	}else{
+		return clos.is(origin, standard);
+	}
 };
 
 // symbol
@@ -72,10 +84,6 @@ clos.symbol = function(name, origin){
 	clos.symbols[name] = this;
 };
 
-clos.symbol.prototype.toString = function(){
-	return '#' + this.name;
-};
-
 // generic
 
 clos.generics = {};
@@ -84,10 +92,6 @@ clos.generic = function(name){
 	this.name = name;
 	this.methods = [];
 	clos.generics[name] = this;
-};
-
-clos.generic.prototype.toString = function(){
-	return '@' + this.name;
 };
 
 clos.generic.prototype.lambda = function(){
@@ -109,22 +113,22 @@ clos.generic.prototype.call = function(){
 	if(!methods.length){
 		throw new clos.noMethod(generic, parameters);
 	}
-	return _.map(methods, function(method){
-		return method.call.apply(method, parameters);
+	methods = methods.sort(generic.order);
+	var result;
+	_.any(methods, function(method){
+		return result = method.call.apply(method, parameters);
 	});
+	return result;
 };
 
 clos.generic.prototype.find = function(){
 	var generic = this,
-		parameters = arguments,
-		methods = [];
-	_.each(generic.methods, function(method){
+		parameters = arguments;
+	return _.filter(generic.methods, function(method){
 		if(method.check(parameters)){
-			methods.push(method);
+			return method;
 		}
 	});
-	methods = methods.sort(generic.order);
-	return methods;
 };
 
 // method
@@ -153,4 +157,22 @@ clos.generic.prototype.order = function(method1, method2){
 
 clos.method.prototype.call = function(){
 	return this.body.apply(undefined, arguments);
+};
+
+// pretty print
+
+clos.error.prototype.toString = function(){
+	return '<error from="clos">' + this.message + '</error>';
+};
+
+clos.symbol.prototype.toString = function(){
+	return '<symbol name="' + this.name + '" />';
+};
+
+clos.type.prototype.toString = function(){
+	return '<type name="' + this.name + '" />';
+};
+
+clos.generic.prototype.toString = function(){
+	return '<generic name="' + this.name + '" />';
 };
