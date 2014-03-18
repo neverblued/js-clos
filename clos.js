@@ -1,31 +1,19 @@
-var _ = require('underscore');
-var clos = exports = module.exports = {};
+var clos = exports = module.exports;
 
-// tool
-
-var inherit = function(example, origin){
-	example.prototype = Object.create(origin.prototype, {
-		constructor: {value: example}
-	});
-};
+var _ = require('underscore'),
+	util = require('util');
 
 // error
 
 clos.error = function(){};
 
-inherit(clos.error, Error);
-
-//clos.typeError = function(datum, expected){
-//	this.message = 'expected ' + expected + ', but found ' + datum;
-//};
-//
-//inherit(clos.typeError, clos.error);
+util.inherits(clos.error, Error);
 
 clos.noMethod = function(generic, parameters){
 	this.message = 'no ' + generic + ' for ' + _.invoke(parameters, 'toString').join(', ');
 };
 
-inherit(clos.noMethod, clos.error);
+util.inherits(clos.noMethod, clos.error);
 
 // identity
 
