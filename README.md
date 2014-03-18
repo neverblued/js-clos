@@ -6,6 +6,7 @@ Javascript object system inspired by Common Lisp.
 Example
 -------
 
+	```javascript
 	new clos.symbol('hard');
 	new clos.symbol('brittle');
 	
@@ -35,6 +36,7 @@ Example
 
 	equal(bump(glass, floor), 'crash',
 		bump + ' ' + glass + ' and ' + floor + ' is crash');
+	```
 
 Test
 ----
